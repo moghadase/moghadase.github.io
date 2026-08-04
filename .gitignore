@@ -1,0 +1,6 @@
+node_modules/
+_site/
+.cache/
+
+# Local editor/agent launch config — contains machine-specific absolute paths.
+.claude/launch.json
