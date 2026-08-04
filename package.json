@@ -1,0 +1,10 @@
+{
+  "name": "moghadase-github-io",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal site of Moghadaseh Ahmadi — moghadase.github.io",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  }
+}
