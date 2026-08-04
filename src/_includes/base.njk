@@ -1,0 +1,114 @@
+{#
+  base.njk — shared skeleton for every page.
+
+  PHASE 1 RULE: this layout must reproduce the pre-Eleventy HTML byte-for-byte
+  (modulo whitespace). The differences between index.html and pages/*.html are
+  reproduced deliberately, not fixed. Unifying them is phase 1.5's job.
+  Full inventory of those differences: docs/AUDIT.md
+
+  Front matter contract:
+    isHome       true only for src/index.njk
+    assetPrefix  "" | "../"            -> styles.css, site.js, images/
+    homePrefix   "" | "../index.html"  -> #about / #contact anchors
+    pagePrefix   "pages/" | ""         -> story.html, now.html, ...
+    navActive    story | now | talks | cv   (unset on the home page)
+
+  Blocks:
+    content      page body, between <main> and </main>
+    pageScripts  per-page inline script (only cv.njk uses it)
+#}
+<!doctype html>
+<html lang="{{ site.lang }}" data-theme="albatross" data-mode="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>{{ title }}</title>
+<meta name="description" content="{{ description }}" />
+<meta name="theme-color" content="#060f18" />
+{% if isHome %}
+{# Search Console ownership proof. Currently home-page only — do not drop it. #}
+<meta name="google-site-verification" content="{{ site.googleSiteVerification }}" />
+{% endif %}
+<link rel="icon" type="image/jpeg" href="{{ assetPrefix }}images/portrait.jpg" />
+{%- if isHome %}
+<link rel="apple-touch-icon" href="{{ assetPrefix }}images/portrait.jpg" />
+{%- endif %}
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="{{ assetPrefix }}styles.css" />
+</head>
+{% if isHome %}<body style="font-size: 8px">{% else %}<body class="subpage">{% endif %}
+
+<!-- ============ NAV ============ -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a href="{{ homePrefix or '#top' }}" class="brand" aria-label="Moghadaseh Ahmadi">
+      <span class="brand-name"><em>Moghadaseh</em> Ahmadi</span>
+    </a>
+
+    <nav class="nav-links" aria-label="Main">
+      <a href="{{ homePrefix }}#about"><span class="nav-num">01</span>About</a>
+      <a href="{{ pagePrefix }}story.html"{% if navActive == "story" %} class="is-here"{% endif %}><span class="nav-num">02</span>Story</a>
+      <a href="{{ pagePrefix }}now.html"{% if navActive == "now" %} class="is-here"{% endif %}><span class="nav-num">03</span>Journey</a>
+      <a href="{{ pagePrefix }}talks.html"{% if navActive == "talks" %} class="is-here"{% endif %}><span class="nav-num">04</span>Talks</a>
+      <a href="{{ pagePrefix }}cv.html"{% if navActive == "cv" %} class="is-here"{% endif %}><span class="nav-num">05</span>CV</a>
+      <a href="{{ homePrefix }}#contact"><span class="nav-num">06</span>Contact</a>
+    </nav>
+
+    <div class="nav-tools">
+      <div class="theme-dots" role="group" aria-label="Theme">
+        <span data-set="albatross" title="Albatross" class="is-active"></span>
+        <span data-set="rose" title="Rose"></span>
+        <span data-set="mono" title="Mono"></span>
+      </div>
+      <button class="mode-toggle" id="modeToggle" aria-label="Toggle dark mode">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <button class="nav-burger" id="burger" aria-label="Menu" aria-expanded="false">
+        <span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+{# Mobile menu: 8 items on the home page (extra in-page anchors), 6 elsewhere.
+   data-close only sits on same-page anchors — site.js:78 uses it to close the menu. #}
+<!-- Mobile menu -->
+<div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+{%- if isHome %}
+  <a href="#about" data-close><span>About</span><span class="nav-num">01</span></a>
+  <a href="pages/story.html"><span>Story · Porotezsaz</span><span class="nav-num">02</span></a>
+  <a href="pages/now.html"><span>Journey</span><span class="nav-num">03</span></a>
+  <a href="pages/talks.html"><span>Talks &amp; Speaking</span><span class="nav-num">04</span></a>
+  <a href="pages/cv.html"><span>CV</span><span class="nav-num">05</span></a>
+  <a href="#research" data-close><span>Research</span><span class="nav-num">06</span></a>
+  <a href="#experience" data-close><span>Experience</span><span class="nav-num">07</span></a>
+  <a href="#contact" data-close><span>Contact</span><span class="nav-num">08</span></a>
+{%- else %}
+  <a href="../index.html#about"><span>About</span><span class="nav-num">01</span></a>
+  <a href="story.html"><span>Story · Porotezsaz</span><span class="nav-num">02</span></a>
+  <a href="now.html"><span>Journey</span><span class="nav-num">03</span></a>
+  <a href="talks.html"><span>Talks &amp; Speaking</span><span class="nav-num">04</span></a>
+  <a href="cv.html"><span>CV</span><span class="nav-num">05</span></a>
+  <a href="../index.html#contact"><span>Contact</span><span class="nav-num">06</span></a>
+{%- endif %}
+</div>
+
+{% if isHome %}<main id="top">{% else %}<main>{% endif %}
+
+{% block content %}{% endblock %}
+
+</main>
+
+<script src="{{ assetPrefix }}site.js"></script>
+{% block pageScripts %}{% endblock %}
+</body>
+</html>

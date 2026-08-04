@@ -6,5 +6,13 @@
   "license": "UNLICENSED",
   "engines": {
     "node": ">=18"
+  },
+  "scripts": {
+    "build": "eleventy",
+    "serve": "eleventy --serve",
+    "diff": "node scripts/diff-output.mjs"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "^3.1.6"
   }
 }

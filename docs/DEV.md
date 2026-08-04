@@ -47,7 +47,7 @@ cd moghadase.github.io
 npm ci
 ```
 
-> `npm ci` تا فاز ۱ کاری نمی‌کند چون هنوز dependency نداریم. از فاز ۱ به بعد Eleventy نصب می‌شود.
+تنها dependency پروژه `@11ty/eleventy` است (devDependency). هیچ CSS framework یا کتابخانهٔ سمت‌کاربری نداریم.
 
 ### بررسی دسترسی push
 
@@ -63,19 +63,37 @@ git push --dry-run origin main
 
 ## دستورهای توسعه
 
-از فاز ۱ به بعد در دسترس‌اند:
-
 ```bash
-npx @11ty/eleventy --serve
+npm run serve
 ```
 
-سرور توسعه روی `http://localhost:8080`.
+سرور توسعه روی `http://localhost:8080` با live reload.
 
 ```bash
-npx @11ty/eleventy
+npm run build
 ```
 
 بیلد یک‌باره در `_site/`.
+
+```bash
+npm run diff
+```
+
+خروجی `_site/` را با HTML سایت روی برنچ `main` مقایسه می‌کند و اختلاف معنادار را گزارش می‌دهد. اگر همه‌چیز یکی بود exit code صفر است، وگرنه ۱.
+
+مقایسه با یک کامیت مشخص:
+
+```bash
+node scripts/diff-output.mjs --ref e0501a6
+```
+
+### اسکریپت دیف چه چیزی را نادیده می‌گیرد
+
+فقط چیزهایی که در HTML معنا ندارند: تورفتگی، شکست خط، خط خالی، و کامنت‌ها. همچنین character reference ها decode می‌شوند، یعنی `&` و `&amp;` برابر شمرده می‌شوند.
+
+بقیهٔ چیزها — ترتیب تگ‌ها، صفت‌ها، مقدار صفت‌ها و متن — باید عیناً یکی باشند.
+
+**در فاز ۱ ابزار اثبات است** (باید صفر اختلاف بدهد). **در فاز ۱.۵ ابزار مرور** — آن‌جا هدر و فوتر عمداً عوض می‌شوند و این اسکریپت فهرست خوانای همان تغییرات عمدی را می‌دهد.
 
 ---
 
@@ -142,26 +160,45 @@ Remove-Item -Recurse -Force "$repo\node_modules"
 
 ## ساختار پوشه‌ها
 
-وضعیت فعلی (بعد از فاز ۰) و آنچه از فاز ۱ به بعد اضافه می‌شود:
+وضعیت بعد از فاز ۱:
 
 ```
 .
-├── index.html              ← فاز ۱: به src/index.njk تبدیل می‌شود
-├── pages/*.html            ← فاز ۱: به src/pages/*.njk تبدیل می‌شوند
-├── styles.css              ← سر جایش می‌ماند (URL عمومی)
-├── site.js                 ← سر جایش می‌ماند
-├── images/                 ← سر جایش می‌ماند
-├── uploads/                ← سر جایش می‌ماند (لینک عمومی CV)
-├── screenshots/            ← دست نخورده
+├── src/                        ← ورودی Eleventy
+│   ├── _includes/base.njk      ← اسکلت مشترک همهٔ صفحات
+│   ├── _data/site.json         ← url, title, author, lang, کد Search Console
+│   ├── index.njk               ← permalink: /index.html
+│   └── pages/
+│       ├── story.njk           ← permalink: /pages/story.html
+│       ├── now.njk
+│       ├── talks.njk
+│       └── cv.njk
+├── eleventy.config.mjs
+├── scripts/diff-output.mjs     ← مقایسهٔ خروجی با یک ref گیت
+├── .github/workflows/deploy.yml
+│
+│   ── دارایی‌ها روی ریشه می‌مانند، چون URL عمومی‌شان نباید بشکند ──
+├── styles.css
+├── site.js
+├── images/
+├── uploads/                    ← لینک عمومی CV
+├── screenshots/                ← در هیچ صفحه‌ای استفاده نشده؛ دست نخورده
 ├── robots.txt
-├── sitemap.xml             ← فاز ۲: با نسخهٔ تولیدشده جایگزین می‌شود
+├── sitemap.xml                 ← فاز ۲: با نسخهٔ تولیدشده جایگزین می‌شود
+│
 ├── package.json
 ├── .gitignore
-├── BLOG-PANEL-SPEC.md      ← اسپک پروژه
+├── BLOG-PANEL-SPEC.md          ← اسپک پروژه
 └── docs/
-    ├── AUDIT.md            ← ممیزی HTML قبل از مهاجرت
-    └── DEV.md              ← همین فایل
+    ├── AUDIT.md                ← ممیزی HTML قبل از مهاجرت
+    └── DEV.md                  ← همین فایل
 ```
+
+`_site/` خروجی بیلد است و در `.gitignore`. هیچ‌وقت کامیت نمی‌شود.
+
+### چرا `eleventy.config.mjs` و نه `.js`
+
+فایل با سینتکس ESM نوشته شده. پسوند `.mjs` یعنی لازم نیست `"type": "module"` را به `package.json` اضافه کنیم — و `site.js` که در مرورگر اجرا می‌شود از این تصمیم اثر نمی‌گیرد.
 
 دلیل این‌که دارایی‌ها روی ریشه می‌مانند و به `src/assets/` منتقل نمی‌شوند: `uploads/Updated_CV_Moghadaseh_Ahmadi.pdf` یک URL عمومی است که احتمالاً در لینکدین و ایمیل‌ها لینک شده. جزئیات در `BLOG-PANEL-SPEC.md` بند ۱.۱.
 
