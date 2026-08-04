@@ -9,14 +9,34 @@
  *   node scripts/diff-output.mjs --ref e0501a6   # ...against a specific commit
  *   node scripts/diff-output.mjs --context 5     # more surrounding tokens
  *   node scripts/diff-output.mjs --max 200       # more differences per file
+ *   node scripts/diff-output.mjs --whitespace    # also flag inter-tag spacing
  *
  * Exit code 0 when every page matches, 1 otherwise — so CI can gate on it.
  *
- * What "matches" means here: identical after normalising the things that carry
- * no meaning in HTML. Indentation, line breaks and blank lines are collapsed,
- * comments are dropped, and character references are decoded so that a bare "&"
- * and "&amp;" compare equal. Everything else — tag order, attributes, attribute
- * values, text — must be identical.
+ * What "matches" means in the default mode: identical after normalising the
+ * things that carry no meaning in HTML. Indentation, line breaks and blank lines
+ * are collapsed, whitespace-only text between tags is dropped, comments are
+ * removed, and character references are decoded so that a bare "&" and "&amp;"
+ * compare equal. Everything else — tag order, attributes, attribute values,
+ * text — must be identical.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY --whitespace EXISTS
+ *
+ * "Whitespace-insensitive" is not quite true for HTML. Between two inline or
+ * inline-block siblings, a run of whitespace collapses to one rendered space
+ * that occupies real width. Remove it and the two elements butt together;
+ * add it and they separate. The default mode cannot see this, because it throws
+ * whitespace-only text nodes away.
+ *
+ * styles.css has 19 selectors with an inline-level display, six of them inside
+ * the header (.brand, .brand-name, .brand-name em, .theme-dots, .theme-dots
+ * span, .nav-burger) — exactly the region a layout refactor rearranges.
+ *
+ * --whitespace keeps that information: a whitespace-only run becomes an explicit
+ * token, and text runs record whether they had leading/trailing space. Use it
+ * whenever the template structure moved, not just its contents.
+ * ---------------------------------------------------------------------------
  */
 
 import { execFileSync } from "node:child_process";
@@ -36,6 +56,7 @@ const flag = (name, fallback) => {
 const ref = flag("ref", "main");
 const context = Number(flag("context", 2));
 const maxPerFile = Number(flag("max", 40));
+const keepWhitespace = args.includes("--whitespace");
 
 /* ------------------------------------------------------------------ *
  * Normalisation
@@ -66,6 +87,9 @@ function decodeEntities(s) {
 /**
  * Split a document into a list of comparable tokens: one per tag, one per run
  * of text. Whitespace is collapsed, comments removed, entities decoded.
+ *
+ * With --whitespace, whitespace-only runs survive as a "␣" token and text runs
+ * keep a marker for leading/trailing space, so inline spacing shifts show up.
  */
 function tokenize(html) {
   const withoutComments = html.replace(/<!--[\s\S]*?-->/g, "");
@@ -80,9 +104,23 @@ function tokenize(html) {
       // Collapse whitespace inside the tag, but keep attribute values intact.
       const tag = raw.replace(/\s+/g, " ").replace(/\s*\/?>$/, (end) => end.trim());
       tokens.push(decodeEntities(tag));
+      continue;
+    }
+
+    if (/^\s+$/.test(raw)) {
+      if (keepWhitespace) tokens.push("␣");
+      continue;
+    }
+
+    const decoded = decodeEntities(raw);
+    const text = decoded.replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    if (keepWhitespace) {
+      const lead = /^\s/.test(decoded) ? "␣" : "";
+      const trail = /\s$/.test(decoded) ? "␣" : "";
+      tokens.push(lead + text + trail);
     } else {
-      const text = decodeEntities(raw).replace(/\s+/g, " ").trim();
-      if (text) tokens.push(text);
+      tokens.push(text);
     }
   }
   return tokens;
@@ -181,7 +219,11 @@ try {
   process.exit(2);
 }
 
-console.log(`Comparing _site/ against ${ref}\n`);
+console.log(
+  `Comparing _site/ against ${ref}` +
+    (keepWhitespace ? "  [whitespace-sensitive: inter-tag spacing counts]" : "") +
+    "\n"
+);
 
 let filesCompared = 0;
 let filesMissing = 0;
